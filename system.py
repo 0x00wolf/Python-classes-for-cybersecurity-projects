@@ -1,4 +1,3 @@
-# Portable system class with useful functions for malware authors.
 from requests import get
 from requests.exceptions import RequestException
 from system import System
