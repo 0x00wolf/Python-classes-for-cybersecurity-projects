@@ -6,6 +6,7 @@ from os import getuid, getlogin, cpu_count, system, walk
 from os.path import join, expanduser
 import platform
 
+
 class System:
   
     def __init__(self):
